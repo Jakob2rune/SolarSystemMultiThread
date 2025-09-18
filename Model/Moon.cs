@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
@@ -27,11 +28,27 @@ namespace SolarSystemMultiThread.Model
         public Planet ParentPlanet { get; set; }
         override public int Diameter
         {
-            get { return (int)Ellipse.Width; }
+            get
+            {
+                if (Ellipse.Dispatcher.CheckAccess())
+                    return (int)Ellipse.Width;
+                else
+                    return (int)Ellipse.Dispatcher.Invoke(() => Ellipse.Width);
+            }
             set
             {
-                Ellipse.Width = value;
-                Ellipse.Height = value;
+                if (Ellipse.Dispatcher.CheckAccess())
+                {
+                    Ellipse.Width = value;
+                    Ellipse.Height = value;
+                }
+                else
+                {
+                    Ellipse.Dispatcher.Invoke(() => {
+                        Ellipse.Width = value;
+                        Ellipse.Height = value;
+                    });
+                }
             }
         }
         override public SolidColorBrush Color
@@ -43,14 +60,21 @@ namespace SolarSystemMultiThread.Model
         override public double XPos
         {
             get { return _xPos; }
-            set { _xPos = value; propertyIsChanged(); }
+            set {
+                _xPos = value;
+
+                //Application.Current.Dispatcher.Invoke(() => propertyIsChanged());
+            }
         }
 
         private double _yPos;
         override public double YPos
         {
             get { return _yPos; }
-            set { _yPos = value; propertyIsChanged(); }
+            set {
+                _yPos = value;
+                //Application.Current.Dispatcher.Invoke(() => propertyIsChanged());
+            }
         }
 
         /// <summary>

@@ -55,6 +55,7 @@ namespace SolarSystemMultiThread
                 // Random position within canvas bounds
                 Canvas.SetLeft(star, random.Next(0, 800));
                 Canvas.SetTop(star, random.Next(0, 800));
+                Canvas.SetZIndex(star, -1); // Set ZIndex to ensure stars are in the background
 
                 canvasUniverse.Children.Add(star);
             }

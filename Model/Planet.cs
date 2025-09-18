@@ -21,13 +21,34 @@ namespace SolarSystemMultiThread.Model
 
         public double Angle { get; set; }
 
-        override public int Diameter 
+        public override int Diameter 
         { 
-            get { return (int)Ellipse.Width; } 
+            get 
+            {
+                //Checks if the current thread has access to the Ellipse object
+                //and if it doesnt, it uses the Dispatcher to safely retrieve the Width property.
+                //by doing this, it ensures that the UI element is accessed in a thread-safe manner.
+                //which is crucial in a multi-threaded environment to prevent potential issues.
+                if (Ellipse.Dispatcher.CheckAccess())
+                    return (int)Ellipse.Width;
+                else
+                    //this line uses the Dispatcher to invoke a method on the UI thread that retrieves the Width property of the Ellipse.
+                    return (int)Ellipse.Dispatcher.Invoke(() => Ellipse.Width);
+            } 
             set 
             { 
-                Ellipse.Width = value; 
-                Ellipse.Height = value; 
+                if (Ellipse.Dispatcher.CheckAccess())
+                {
+                    Ellipse.Width = value; 
+                    Ellipse.Height = value; 
+                }
+                else
+                {
+                    Ellipse.Dispatcher.Invoke(() => {
+                        Ellipse.Width = value;
+                        Ellipse.Height = value;
+                    });
+                }
             }
         }
 
@@ -38,24 +59,25 @@ namespace SolarSystemMultiThread.Model
         }
 
         private double _xPos;
-        override public double XPos
+        public override double XPos
         {
             get { return _xPos; }
             set
             {
                 _xPos = value;
-                propertyIsChanged();
+                //Application.Current.Dispatcher.Invoke(() => propertyIsChanged());
             }
         }
 
         private double _yPos;
-        override public double YPos
+        public override double YPos
         {
             get { return _yPos; }
             set
             {
                 _yPos = value;
-                propertyIsChanged();
+                //Application.Current.Dispatcher.Invoke(() => propertyIsChanged());
+
             }
         }
 
@@ -108,13 +130,8 @@ namespace SolarSystemMultiThread.Model
             );
         }
 
-        /// <summary>
-        /// Updates the position of the object based on its current speed and angle.
-        /// To be used as an event handler for a timer tick event, the delegate signature must match.
-        /// </summary>
-        /// <param name="sender">The source of the event that triggered the move operation.</param>
-        /// <param name="e">An <see cref="EventArgs"/> instance containing the event data.</param>
-        public override void Move(Object sender, EventArgs e) {
+        public override void Move(object sender, EventArgs e)
+        {
             Angle += Speed;
             Point newPos = CalcNewPos();
 

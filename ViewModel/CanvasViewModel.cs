@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -34,19 +35,11 @@ namespace SolarSystemMultiThread.ViewModel
         // Constructor
         public CanvasViewModel()
         {
-
             InitializePlanets();
             InitializeMoons();
             InitializeSaturnRings();
-            //SetupTimer();
-            SetupMultiThreadTimer();
-
-
+            SetupTimer();
         }
-
-
-
-
 
         /// <summary>
         /// Method to initialize the collection of planets with their properties.
@@ -82,7 +75,6 @@ namespace SolarSystemMultiThread.ViewModel
               // Neptune, index 8
               new Planet(30, 0.007, System.Windows.Media.Brushes.DarkBlue, 360, 280)
 
-
             };
 
             //add to planets collection
@@ -97,6 +89,7 @@ namespace SolarSystemMultiThread.ViewModel
                 OrbitalBodies.Add(planet);
             }
         }
+
         /// <summary>
         /// Initialize the moons and link them to their parent planets.
         /// </summary>
@@ -146,34 +139,72 @@ namespace SolarSystemMultiThread.ViewModel
         }
 
         /// <summary>
-        /// Initializes and starts a timer to periodically update the positions of orbital bodies.
+        /// A <see cref="CancellationTokenSource"/> used to signal cancellation of the game loop.
         /// </summary>
-        /// <remarks>The timer is configured to trigger every 20 milliseconds. For each orbital body,
-        /// except the first one  (assumed to represent the sun), the timer's tick event is associated with the body's
-        /// <see cref="Move"/> method. This ensures that the positions of the orbital bodies are updated at regular
-        /// intervals.</remarks>
-        private void SetupTimer()
+        /// <remarks>This field is intended to manage the lifecycle of the game loop's cancellation token.
+        /// Ensure proper disposal of this object to avoid resource leaks.</remarks>
+        private CancellationTokenSource _gameLoopCts;
+
+        /// <summary>
+        /// Initializes and starts the game loop timer, which updates the positions of orbital bodies and refreshes the
+        /// UI at approximately 60 frames per second.
+        /// </summary>
+        /// <remarks>This method runs an asynchronous game loop that processes the movement of orbital
+        /// bodies in parallel and updates their positions on the UI thread. The loop continues until it is explicitly
+        /// canceled via the associated <see cref="CancellationTokenSource"/>.</remarks>
+        private async void SetupTimer()
         {
+            // Initialize the cancellation token source
+            _gameLoopCts = new CancellationTokenSource();
 
-            DispatcherTimer timer = new DispatcherTimer();
-            timer.Interval = TimeSpan.FromMilliseconds(20);
-
-            // Add Move event handler for each body except the sun
-            foreach (var body in OrbitalBodies)
+            try
             {
-                // Skip the sun, index 0e
-                if (body != OrbitalBodies[0])
+                // Main game loop
+               
+                while (!_gameLoopCts.Token.IsCancellationRequested)
                 {
-                    timer.Tick += body.Move;
+                    var startTime = DateTime.Now;
+
+                    // Process all bodies in parallel
+                    // Skip the first body (the sun) as it does not move
+                    // Use Task.Run to offload the work to background threads
+                    // Collect tasks to await them later
+                    // Using Select to create a task for each body's Move method
+                    var moveTasks = OrbitalBodies.Skip(1)
+                        .Select(body => Task.Run(() => body.Move(this, EventArgs.Empty)))
+                        .ToArray();
+
+                    // Wait for all movements to complete
+                    await Task.WhenAll(moveTasks);
+
+                    // Update UI on main thread
+                    // Use Dispatcher to ensure UI updates are thread-safe
+                    // Use InvokeAsync to avoid blocking the game loop
+                    // Notify property changes for XPos and YPos of all bodies
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        foreach (var body in OrbitalBodies)
+                        {
+                            body.propertyIsChanged(nameof(body.XPos));
+                            body.propertyIsChanged(nameof(body.YPos));
+                        }
+                    });
+
+                    // Maintain ~60 FPS
+                    // Calculate elapsed time and delay if necessary
+                    // Use Math.Max to ensure non-negative delay
+                    var elapsed = (DateTime.Now - startTime).TotalMilliseconds;
+                    var delay = Math.Max(0, 16 - elapsed); // 16ms for 60 FPS
+                    // Use Task.Delay with cancellation token to allow graceful exit
+                    // This ensures the loop can be cancelled promptly
+                    // Use (int) cast as Task.Delay requires an integer
+                    await Task.Delay((int)delay, _gameLoopCts.Token);
                 }
             }
-            timer.Start();
+            catch (TaskCanceledException)
+            {
+                // Game loop was cancelled, normal exit
+            }
         }
-        private void SetupMultiThreadTimer()
-        {
-
-        }
-        
     }
-
 }

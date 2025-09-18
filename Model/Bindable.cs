@@ -16,7 +16,7 @@ namespace SolarSystemMultiThread.Model
     {
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected void propertyIsChanged([CallerMemberName] string memberName = "")
+        public void propertyIsChanged([CallerMemberName] string memberName = "")
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(memberName));
         }
