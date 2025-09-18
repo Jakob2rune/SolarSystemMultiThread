@@ -65,7 +65,6 @@ namespace SolarSystemMultiThread.Model
             set
             {
                 _xPos = value;
-                //Application.Current.Dispatcher.Invoke(() => propertyIsChanged());
             }
         }
 
@@ -76,8 +75,6 @@ namespace SolarSystemMultiThread.Model
             set
             {
                 _yPos = value;
-                //Application.Current.Dispatcher.Invoke(() => propertyIsChanged());
-
             }
         }
 

@@ -30,9 +30,14 @@ namespace SolarSystemMultiThread.Model
         {
             get
             {
+                //Checks if the current thread has access to the Ellipse object
+                //and if it doesnt, it uses the Dispatcher to safely retrieve the Width property.
+                //by doing this, it ensures that the UI element is accessed in a thread-safe manner.
+                //which is crucial in a multi-threaded environment to prevent potential issues.
                 if (Ellipse.Dispatcher.CheckAccess())
                     return (int)Ellipse.Width;
                 else
+                    //this line uses the Dispatcher to invoke a method on the UI thread that retrieves the Width property of the Ellipse.
                     return (int)Ellipse.Dispatcher.Invoke(() => Ellipse.Width);
             }
             set
